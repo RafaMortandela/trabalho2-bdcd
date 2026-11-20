@@ -1,0 +1,19 @@
+digraph G {
+  rankdir=LR; bgcolor=white; pad=0.3; nodesep=0.6; ranksep=1.1;
+  node [shape=circle, style=filled, fontname="Helvetica", fontsize=12, width=1.25, fixedsize=true, penwidth=0];
+  edge [fontname="Helvetica", fontsize=10, color="#555555", fontcolor="#333333"];
+  Deputado   [fillcolor="#4C8EDA", fontcolor=white];
+  Partido    [fillcolor="#F79767"];
+  Estado     [fillcolor="#FFC454"];
+  Frente     [fillcolor="#8DCC93"];
+  Proposicao [fillcolor="#DA7194", fontcolor=white, label="Proposição"];
+  Tema       [fillcolor="#C990C0"];
+  Votacao    [fillcolor="#57C7E3", label="Votação"];
+  Deputado -> Partido [label="FILIADO_A"];
+  Deputado -> Estado [label="REPRESENTA"];
+  Deputado -> Frente [label="MEMBRO_DE\n{papel}"];
+  Deputado -> Proposicao [label="AUTOR_DE\n{ordemAssinatura, proponente}"];
+  Deputado -> Votacao [label="VOTOU\n{voto}"];
+  Votacao -> Proposicao [label="SOBRE"];
+  Proposicao -> Tema [label="TRATA_DE"];
+}

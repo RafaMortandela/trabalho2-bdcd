@@ -1,0 +1,41 @@
+digraph G {
+  rankdir=LR; bgcolor=white; pad=0.3; nodesep=0.35; ranksep=1.3;
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10, penwidth=0, margin="0.15,0.08"];
+  edge [fontname="Helvetica", fontsize=9, color="#555555", fontcolor="#333333"];
+
+  pt   [label="Partido\nPT", fillcolor="#F79767"];
+  pode [label="Partido\nPODE", fillcolor="#F79767"];
+  ms   [label="Estado\nMS", fillcolor="#FFC454"];
+  es   [label="Estado\nES", fillcolor="#FFC454"];
+
+  d1 [label="Deputado\nCamila Jara\nid 220548", fillcolor="#4C8EDA", fontcolor=white];
+  d2 [label="Deputado\nGilson Daniel\nid 220529", fillcolor="#4C8EDA", fontcolor=white];
+
+  f1 [label="Frente\nFrente Parlamentar\nMista da Saúde", fillcolor="#8DCC93"];
+  f2 [label="Frente\nFrente Parlamentar de Gestão\nde Riscos e Desastres", fillcolor="#8DCC93"];
+
+  p1 [label="Proposição\nPL 4392/2025\n(Estatuto do Pantanal)", fillcolor="#DA7194", fontcolor=white];
+  p2 [label="Proposição\nPL 4709/2025\n(golpe do falso advogado)", fillcolor="#DA7194", fontcolor=white];
+
+  v1 [label="Votação 2558628-8\n09/09/2025 · PLEN\nurgência aprovada", fillcolor="#57C7E3"];
+  v2 [label="Votação 2570219-7\n12/11/2025 · PLEN\nurgência aprovada", fillcolor="#57C7E3"];
+
+  t1 [label="Tema\nDefesa e Segurança", fillcolor="#C990C0"];
+  t2 [label="Tema\nComunicações", fillcolor="#C990C0"];
+
+  d1 -> pt [label="FILIADO_A"];
+  d2 -> pode [label="FILIADO_A"];
+  d1 -> ms [label="REPRESENTA"];
+  d2 -> es [label="REPRESENTA"];
+  d1 -> f1 [label="MEMBRO_DE\npapel: Membro"];
+  d2 -> f2 [label="MEMBRO_DE\npapel: Coordenador"];
+  d1 -> p1 [label="AUTOR_DE"];
+  d2 -> p2 [label="AUTOR_DE"];
+  d1 -> v2 [label="VOTOU\nvoto: Não"];
+  d2 -> v1 [label="VOTOU\nvoto: Sim"];
+  v1 -> p1 [label="SOBRE"];
+  v2 -> p2 [label="SOBRE"];
+  p1 -> t1 [label="TRATA_DE"];
+  p2 -> t1 [label="TRATA_DE"];
+  p2 -> t2 [label="TRATA_DE"];
+}

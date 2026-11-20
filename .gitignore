@@ -1,0 +1,14 @@
+# Arquivos originais do portal (~300 MB). Para gerar de novo: python3 scripts/01_coleta.py
+dados/brutos/
+
+# HTML gerado para montar o Google Docs (tem as imagens embutidas em base64)
+relatorio/parte_dados_e_carga.html
+
+# Python
+__pycache__/
+*.pyc
+
+# Sistema / editores
+.DS_Store
+.vscode/
+.idea/
