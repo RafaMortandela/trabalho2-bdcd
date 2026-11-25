@@ -1,0 +1,76 @@
+<h1>Trabalho 2: Análise de Dados da Câmara dos Deputados com Neo4j</h1>
+
+<h2>1. Integrantes</h2>
+<p>(preencher com os nomes completos da dupla)</p>
+
+<h2>2. Introdução e descrição do dataset</h2>
+<p>Os dados vêm do Portal de Dados Abertos da Câmara dos Deputados (https://dadosabertos.camara.leg.br). O recorte é a 57ª legislatura (2023 a 2027) e o ano de 2025, que é o último ano completo disponível. A ideia foi pegar um ano inteiro de atividade da Câmara: quem são os deputados, de quais frentes participam, o que propuseram e como votaram.</p>
+<p>O que entrou no banco, depois da limpeza:</p>
+{{TABELA_DADOS}}
+<p>Período: as votações vão de 11/02/2025 a 17/12/2025. Das 8.247 proposições, 8.103 têm ano 2025. As outras 144 são de anos anteriores e entraram porque foram votadas em 2025 (por exemplo, o PL 759/2015).</p>
+<p>Alguns detalhes que ajudam a entender os dados:</p>
+<ul>
+<li>A lista de deputados inclui suplentes que assumiram mandato em algum momento da legislatura, por isso são 648 e não 513. Desses, 97 não aparecem em nenhuma votação nominal de 2025.</li>
+<li>A API repete o deputado quando ele troca de partido. Ficamos só com o registro mais recente, então o partido no grafo é o atual, que pode não ser o mesmo da época de um voto.</li>
+<li>Só votações nominais têm voto individual registrado. As votações simbólicas ficaram de fora. Das 550 votações, 429 são do Plenário e o resto é de comissões (CCJC tem 53).</li>
+<li>Os votos possíveis são Sim (101.406), Não (72.098), Artigo 17 (420, que é o presidente da sessão, que não vota), Obstrução (375) e Abstenção (347). Uma votação veio com 421 votos em branco no arquivo original, e esses registros foram descartados.</li>
+<li>Das proposições, só mantivemos os tipos que são projeto: PL (6.643), PDL (1.157), PLP (250), PRC (89), MPV (47) e PEC (34). Requerimentos, emendas e pareceres passam de 100 mil registros em 2025 e iam encher o grafo de documentos de tramitação. A exceção são os poucos requerimentos que foram a votação nominal.</li>
+<li>Na autoria, ficaram só os autores que são deputados. Proposições do Senado ou do Executivo continuam no grafo, mas sem ligação de autoria.</li>
+<li>O arquivo de 2025 traz algumas proposições com data de apresentação fora do ano (40 em 2026 e 8 antes de 2017). Mantivemos como veio.</li>
+</ul>
+
+<h2>3. Coleta dos dados</h2>
+<p>A coleta tem dois scripts em Python, só com biblioteca padrão (urllib e csv), então rodam sem instalar nada.</p>
+<p>O <b>01_coleta.py</b> busca os deputados na API REST (/deputados?idLegislatura=57), seguindo os links de paginação de 100 em 100, e baixa os arquivos CSV anuais do portal. Os deputados vieram da API porque o CSV de deputados do portal é histórico e não traz o partido atual. Os arquivos ficam em dados/brutos (cerca de 300 MB, sendo 98 MB só o de membros de frentes, que tem todas as legislaturas desde 2003).</p>
+{{CODIGO_COLETA}}
+<p>O <b>02_preprocessamento.py</b> aplica os filtros descritos na seção anterior e gera CSVs menores, com só as colunas que vão para o grafo, na pasta dados/neo4j (cerca de 9 MB no total). As ementas são cortadas em 500 caracteres.</p>
+{{CODIGO_PREPROC}}
+
+<h2>4. Modelagem dos dados</h2>
+<p>O grafo tem 7 tipos de nó e 7 tipos de relacionamento. O deputado fica no centro, ligado ao partido, ao estado, às frentes, às proposições de que é autor e às votações em que votou.</p>
+{{IMG_ESQUEMA}}
+<p>Algumas decisões do modelo:</p>
+<ul>
+<li>Partido e Estado são nós, e não só propriedades do deputado. Assim dá para agrupar e percorrer o grafo por eles (deputados do mesmo estado que votam juntos, por exemplo). A sigla também ficou como propriedade no Deputado, para facilitar filtros simples.</li>
+<li>Votação é um nó próprio, e não uma aresta direta entre deputado e proposição. Uma mesma proposição passa por várias votações (urgência, texto-base, destaques), cada uma com data e resultado. O voto (Sim, Não, Obstrução...) fica como propriedade da aresta VOTOU.</li>
+<li>Tema também é nó, porque uma proposição pode ter mais de um tema e são só 32 temas no total.</li>
+<li>MEMBRO_DE guarda o papel do deputado na frente (Membro ou Coordenador), e AUTOR_DE guarda a ordem de assinatura e se ele é o proponente.</li>
+</ul>
+<p>A figura abaixo mostra 2 exemplos reais de cada tipo de nó e de relacionamento, tirados do banco: os deputados Camila Jara (PT/MS) e Gilson Daniel (PODE/ES), cada um com uma frente, um projeto de lei de sua autoria, a votação de urgência desse projeto e os temas. Um detalhe que o exemplo mostra: Camila votou Não na urgência do projeto do Gilson, e Gilson votou Sim na urgência do projeto dela.</p>
+{{IMG_EXEMPLOS}}
+
+<h2>5. Importação no Neo4j</h2>
+<p>A importação usa LOAD CSV, rodado pelo cypher-shell num container Docker com Neo4j 5.26 (a pasta dados/neo4j foi montada como pasta de import). Antes de carregar, o script cria uma restrição de unicidade para cada tipo de nó, o que também cria o índice usado nos MATCH das arestas. Os arquivos maiores (votos e membros de frentes) são carregados com CALL IN TRANSACTIONS, em lotes de 5 a 10 mil linhas. A carga toda levou cerca de 12 segundos.</p>
+{{CODIGO_IMPORT}}
+<p>Comando usado para rodar o script:</p>
+{{CODIGO_CMD}}
+<p>Contagem depois da importação, que bate com o número de linhas dos CSVs:</p>
+{{TABELA_CONTAGEM}}
+
+<h2>6. Consulta visual dos dados importados</h2>
+<p>O banco tem 11.476 nós e cerca de 274 mil relacionamentos, e o Neo4j Browser não consegue desenhar tudo isso de uma vez. Por isso a consulta abaixo pega uma amostra que tem todos os tipos de nó e de relacionamento: deputados que votaram na votação de um PL de que são autores, com partido, estado, temas do PL e duas frentes de cada um.</p>
+{{CODIGO_VISUAL}}
+<p>No resultado aparecem 21 nós e 25 relacionamentos, com os 7 rótulos e os 7 tipos de aresta listados no painel da direita.</p>
+{{IMG_VISUAL}}
+
+<h2>7. Perguntas e consultas Cypher</h2>
+<p>(parte da dupla)</p>
+
+<h2>8. Conclusão</h2>
+<p>(parte da dupla)</p>
+
+<h2>9. Repositório</h2>
+<p>(colocar o link do GitHub)</p>
+<p>Estrutura da pasta:</p>
+<ul>
+<li>scripts/01_coleta.py: baixa os dados da API e os CSVs do portal</li>
+<li>scripts/02_preprocessamento.py: filtra e gera os CSVs para o Neo4j</li>
+<li>scripts/03_importacao.cypher: cria as restrições e carrega o grafo</li>
+<li>scripts/04_consulta_visual.cypher: consulta usada no print</li>
+<li>dados/brutos: arquivos originais do portal</li>
+<li>dados/neo4j: CSVs limpos usados na importação</li>
+<li>figuras: diagramas do modelo e print do Neo4j Browser</li>
+</ul>
+
+<h2>10. Relatório de uso de IA</h2>
+<p>(parte da dupla)</p>

@@ -1,0 +1,77 @@
+{
+  "introducao": "As consultas a seguir usam o snapshot coletado em 25/11/2026. Proposições são contadas por identificador distinto, evitando multiplicar os resultados quando há vários autores ou temas. Os partidos correspondem ao registro de deputado mantido na coleta; não constituem um histórico de filiação na data de cada voto. Os prints mostram as principais colunas de cada resultado no Neo4j Browser; os arquivos CSV e JSON preservam a saída completa.",
+  "analises": [
+    {
+      "titulo": "6.1. Especialização temática por UF",
+      "pergunta": "Em quais temas os deputados de uma UF apresentam participação proporcionalmente maior que a observada no conjunto nacional?",
+      "metodo": "O índice divide a proporção de proposições de um tema na UF pela proporção desse tema no conjunto nacional. O universo contém 7.151 proposições de ano 2025 com pelo menos um autor deputado e classificação temática. A consulta exige pelo menos 100 proposições na UF e 30 no tema. Um projeto conta uma vez em cada UF com autor, e pode integrar vários temas.",
+      "arquivo": "01_especializacao_uf",
+      "analise": [
+        "Mato Grosso do Sul se destaca em Estrutura Fundiária: 36 das 258 proposições associadas à UF tratam do tema, ou 13,95%, diante de 1,79% no conjunto nacional. O índice de 7,795 indica uma participação relativa quase oito vezes maior. Santa Catarina também apresenta concentração em Economia, com 16,29% de suas proposições ante 8,08% no conjunto nacional, índice de 2,015.",
+        "A normalização permite comparar UFs com volumes de produção diferentes e revela concentrações que um ranking de quantidades esconderia. O resultado descreve a pauta das proposições assinadas pelos deputados do recorte; não mede a preferência da população nem demonstra que características econômicas da UF causaram essa concentração. Como as assinaturas de apoio também contam como autoria, uma iniciativa coletiva pode influenciar o perfil observado."
+      ]
+    },
+    {
+      "titulo": "6.2. Pontes de coautoria entre partidos",
+      "pergunta": "Quais pares de partidos compartilham mais proposições por coautoria, e essa aproximação continua alta quando se considera o tamanho de suas produções?",
+      "metodo": "A consulta percorre Partido–Deputado–Proposição–Deputado–Partido e conta proposições distintas de ano 2025 por par de partidos. A similaridade de Jaccard é a interseção dividida pela união das proposições dos dois partidos, multiplicada por 100. A ordenação usa o volume compartilhado e evita repetir o mesmo par em ordem inversa.",
+      "arquivo": "02_pontes_coautoria",
+      "analise": [
+        "PL e UNIÃO formam o par com maior número de proposições compartilhadas: 83. Entretanto, essas proposições representam apenas 3,92% da união de suas produções. PL e REPUBLICANOS aparecem em seguida, com 79 e Jaccard de 3,00%. Entre os dez pares listados, PP e UNIÃO têm menos proposições em comum, 62, mas maior similaridade proporcional, de 6,47%.",
+        "O volume absoluto identifica pontes relevantes pela quantidade de iniciativas, enquanto Jaccard mostra quanto essas pontes representam no conjunto das pautas de cada par. Assim, produzir muito pode elevar a contagem compartilhada sem gerar grande sobreposição proporcional. A coautoria expressa assinatura em proposições e pode incluir apoio; ela não comprova uma aliança estável nem concordância nas votações."
+      ]
+    },
+    {
+      "titulo": "6.3. Pluralidade partidária das frentes",
+      "pergunta": "Quais frentes parlamentares reúnem uma composição partidária mais distribuída, em vez de apenas muitos partidos com participações desiguais?",
+      "metodo": "Para frentes com pelo menos 100 deputados cadastrados, calcula-se o número efetivo de partidos: 1 dividido pela soma dos quadrados das participações partidárias. Se todos os partidos tivessem o mesmo número de membros, o indicador seria igual à quantidade de partidos. A consulta também retorna o tamanho da maior bancada.",
+      "arquivo": "03_pluralidade_frentes",
+      "analise": [
+        "A Frente Parlamentar para a Modernização do Futebol Brasileiro lidera o indicador: tem 186 membros, 21 partidos e número efetivo de 12,046. Sua maior bancada representa 14,52% dos membros. A Frente Parlamentar Mista em Defesa da Amazônia aparece em seguida, com 199 membros, 20 partidos e número efetivo de 11,881; sua maior bancada concentra 14,07%.",
+        "A diferença entre os 21 partidos presentes e os cerca de 12 partidos efetivos no primeiro caso mostra que presença e equilíbrio são medidas diferentes. O indicador distingue composições mais distribuídas mesmo quando várias frentes têm quantidades semelhantes de partidos. Os vínculos registram integrantes cadastrados, não frequência em reuniões ou atuação conjunta; por isso, pluralidade formal não deve ser confundida com cooperação efetiva."
+      ]
+    },
+    {
+      "titulo": "6.4. Coesão dos agrupamentos partidários no Plenário",
+      "pergunta": "Quão frequentemente os votos de cada agrupamento partidário acompanham sua própria maioria nas votações de Plenário?",
+      "metodo": "São usados apenas votos Sim e Não, em votações com pelo menos cinco deputados do agrupamento e partidos com pelo menos 100 votações elegíveis. A coesão é a soma dos votos do lado majoritário em cada votação dividida pelo total de votos comparáveis. Em caso de empate, metade dos votos integra o numerador. A medida é ponderada pelo número de votos, e não uma média simples entre sessões.",
+      "arquivo": "04_coesao_votos",
+      "analise": [
+        "NOVO apresenta coesão de 99,39% em 196 votações elegíveis, com 974 de 980 votos no lado majoritário. PSOL registra 98,79%, e PT, 98,29%, este último com 23.119 de 23.521 votos majoritários em 427 votações. No outro extremo da lista elegível, PODE apresenta 82,88%, PP 83,91% e PSD 83,68%, indicando maior divisão interna nesses agrupamentos.",
+        "Os valores mostram que os agrupamentos diferem na frequência de concordância interna, mas a comparação exige observar os denominadores: o conjunto de votações do NOVO é menor que o de partidos maiores. A métrica não mede apoio ao governo nem cumprimento de orientação partidária, pois compara os votos à maioria do próprio grupo. Além disso, agrupar pela filiação mantida na coleta impede interpretar o resultado como uma medida histórica exata de disciplina partidária em 2025."
+      ]
+    },
+    {
+      "titulo": "6.5. Coautoria frequente e divergência no voto",
+      "pergunta": "Deputados de partidos diferentes que assinam projetos juntos também podem divergir frequentemente nas votações?",
+      "metodo": "A consulta seleciona pares de partidos diferentes com pelo menos dez proposições conjuntas de ano 2025 e cem votações de Plenário com votos Sim ou Não de ambos. A afinidade é o número de votos iguais dividido pelos votos comparáveis. O resultado destaca os dez pares de menor afinidade nesse universo e conta as frentes que compartilham.",
+      "arquivo": "05_coautoria_e_divergencia",
+      "analise": [
+        "Bacelar (PV) e Dr. Fernando Máximo (PL) compartilham dez proposições e 134 frentes, mas votaram da mesma forma em apenas 82 de 289 votações comparáveis: afinidade de 28,37%. Laura Carneiro (PSD) e Luiz Lima (NOVO) têm onze coautorias, 87 frentes em comum e 97 votos iguais em 336 comparações, ou 28,87%. Esses casos combinam vínculos de produção legislativa e participação em frentes com forte divergência nas escolhas de voto.",
+        "O cruzamento mostra que proximidade em uma camada do grafo não garante proximidade nas demais. Assinar uma proposição ou integrar a mesma frente pode envolver uma pauta específica, enquanto o conjunto de votações inclui assuntos e etapas de tramitação variados. Como a consulta escolhe os pares mais divergentes entre coautores frequentes, esses casos não representam a afinidade média de todos os deputados nem provam que as frentes produzem divergência."
+      ]
+    }
+  ],
+  "conclusao": [
+    "A modelagem em grafo permitiu observar a atividade parlamentar por caminhos que ligam território, autoria, partidos, frentes e votos. As consultas mostraram concentrações temáticas por UF, diferenças entre volume e proporção de coautoria, pluralidade formal nas frentes e níveis distintos de coesão nos votos. O cruzamento entre coautoria e votação acrescentou um resultado relevante: vínculos numerosos em projetos e frentes podem coexistir com baixa concordância nas decisões de Plenário.",
+    "Os principais desafios foram integrar identificadores de fontes diferentes, tratar registros repetidos e votos vazios e distinguir proposição de votação. As restrições de unicidade, a carga em lotes e a conferência entre CSVs e Neo4j tornaram o processo verificável. A reprodução das cinco métricas diretamente em Python confirmou os resultados das consultas. O projeto também evidenciou a importância de definir denominadores e limites de interpretação: filiação sem histórico, assinaturas de apoio e recortes de votação influenciam as conclusões. Como continuidade, o modelo pode incorporar filiação na data de cada voto e ampliar a série temporal para investigar a estabilidade dessas relações."
+  ],
+  "ia": [
+    {
+      "titulo": "Ferramentas e escopo",
+      "texto": "Codex e Claude foram utilizados como apoio ao desenvolvimento do código, à compreensão da modelagem em grafos e à elaboração do relatório. O apoio incluiu consultas Cypher, revisão de scripts e organização das análises dos resultados."
+    },
+    {
+      "titulo": "Prompts e interações",
+      "texto": "As interações foram contextualizadas com o enunciado, o repositório e o relatório existente. Os pedidos envolveram identificar requisitos incompletos, formular cinco perguntas analíticas e convertê-las em consultas. O refinamento concentrou-se em contar proposições distintas, definir denominadores, estabelecer filtros mínimos de suporte e distinguir coautoria de concordância no voto."
+    },
+    {
+      "titulo": "Intervenção e integração ao projeto",
+      "texto": "Os scripts de coleta, pré-processamento e importação, assim como os diagramas, já compunham a estrutura inicial. As consultas analíticas, a conferência independente das métricas e as instruções de reprodução foram desenvolvidas com apoio de IA e integradas a esse fluxo. O tratamento dos votos vazios e as contagens do relatório foram ajustados para manter consistência entre os arquivos tratados e o grafo."
+    },
+    {
+      "titulo": "Validação e testes",
+      "texto": "A validação conferiu unicidade de chaves, referências entre arquivos, domínio dos votos e contagens de nós e relacionamentos. A importação foi executada novamente para verificar que não duplicava dados. As cinco consultas foram executadas no Neo4j e seus resultados foram recalculados em Python a partir dos CSVs, incluindo proporções, interseções, índices e ordenação. Os arquivos de resultados e os scripts de conferência estão disponíveis no repositório."
+    }
+  ]
+}

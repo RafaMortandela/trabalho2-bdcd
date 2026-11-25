@@ -1,34 +1,260 @@
-<h1>Trabalho 2: Análise de Dados da Câmara dos Deputados com Neo4j</h1>
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Trabalho 2 BDCD</title><style>body{font:11pt Arial,sans-serif;line-height:1.4;max-width:850px;margin:40px auto;color:#111}
+    h1{font-size:22pt}h2{font-size:16pt;margin-top:25px}h3{font-size:13pt;margin-top:20px}
+    table{border-collapse:collapse;width:100%;font-size:10pt}td,th{padding:6px;border:1px solid #aaa;text-align:left}
+    th{background:#eee}pre{font:8pt monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:10px}
+    figure{margin:18px 0;break-inside:avoid}img{display:block;max-width:100%;max-height:680px;margin:auto}
+    figcaption{font-size:9pt;margin-top:5px}a{color:#1655a0}@page{size:A4;margin:20mm}
+    @media print{body{margin:0;max-width:none}h2,h3{break-after:avoid}p{orphans:3;widows:3}section{break-before:page}}
+    </style><body><h1>Trabalho 2: Análise de Dados da Câmara dos Deputados com Neo4j</h1>
 
 <h2>1. Integrantes</h2>
-<p>(preencher com os nomes completos da dupla)</p>
+<p>Antonio Adolfo Geraldino Bernardo (828561) e Rafaela Silva Ruis (834416)</p>
 
 <h2>2. Introdução e descrição do dataset</h2>
 <p>Os dados vêm do Portal de Dados Abertos da Câmara dos Deputados (https://dadosabertos.camara.leg.br). O recorte é a 57ª legislatura (2023 a 2027) e o ano de 2025, que é o último ano completo disponível. A ideia foi pegar um ano inteiro de atividade da Câmara: quem são os deputados, de quais frentes participam, o que propuseram e como votaram.</p>
 <p>O que entrou no banco, depois da limpeza:</p>
-{{TABELA_DADOS}}
-<p>Período: as votações vão de 11/02/2025 a 17/12/2025. Das 8.247 proposições, 8.103 têm ano 2025. As outras 144 são de anos anteriores e entraram porque foram votadas em 2025 (por exemplo, o PL 759/2015).</p>
+<table><thead><tr><th>Dados</th><th>Quantidade</th></tr></thead><tbody><tr><td>Deputados</td><td>648</td></tr><tr><td>Partidos</td><td>22</td></tr><tr><td>Estados</td><td>27</td></tr><tr><td>Frentes parlamentares</td><td>320</td></tr><tr><td>Participações em frentes</td><td>65.313</td></tr><tr><td>Proposições</td><td>8.248</td></tr><tr><td>Autorias</td><td>13.123</td></tr><tr><td>Temas / ligações proposição-tema</td><td>32 / 19.379</td></tr><tr><td>Votações nominais válidas</td><td>549</td></tr><tr><td>Ligações votação-proposição</td><td>568</td></tr><tr><td>Votos individuais</td><td>174.646</td></tr></tbody></table><p>Snapshot de 25/11/2026. Os 421 votos vazios e a votação sem votos individuais válidos foram excluídos antes da carga.</p>
+<p>Período: as votações vão de 11/02/2025 a 17/12/2025. Das 8.248 proposições, 8.104 têm ano 2025. As outras 144 são de anos anteriores e entraram porque foram votadas em 2025 (por exemplo, o PL 759/2015).</p>
 <p>Alguns detalhes que ajudam a entender os dados:</p>
 <ul>
 <li>A lista de deputados inclui suplentes que assumiram mandato em algum momento da legislatura, por isso são 648 e não 513. Desses, 97 não aparecem em nenhuma votação nominal de 2025.</li>
-<li>A API repete o deputado quando ele troca de partido. Ficamos só com o registro mais recente, então o partido no grafo é o atual, que pode não ser o mesmo da época de um voto.</li>
-<li>Só votações nominais têm voto individual registrado. As votações simbólicas ficaram de fora. Das 550 votações, 429 são do Plenário e o resto é de comissões (CCJC tem 53).</li>
+<li>A deduplicação mantém o último registro retornado pela API para cada deputado, sem garantia de cronologia de filiação. Esse partido pode diferir do partido na data do voto.</li>
+<li>Só votações nominais têm voto individual registrado. As votações simbólicas ficaram de fora. Das 549 votações, 428 são do Plenário e o resto é de comissões (CCJC tem 53).</li>
 <li>Os votos possíveis são Sim (101.406), Não (72.098), Artigo 17 (420, que é o presidente da sessão, que não vota), Obstrução (375) e Abstenção (347). Uma votação veio com 421 votos em branco no arquivo original, e esses registros foram descartados.</li>
-<li>Das proposições, só mantivemos os tipos que são projeto: PL (6.643), PDL (1.157), PLP (250), PRC (89), MPV (47) e PEC (34). Requerimentos, emendas e pareceres passam de 100 mil registros em 2025 e iam encher o grafo de documentos de tramitação. A exceção são os poucos requerimentos que foram a votação nominal.</li>
+<li>Das proposições, só mantivemos os tipos que são projeto: PL (6.644), PDL (1.157), PLP (250), PRC (89), MPV (47) e PEC (34). Requerimentos, emendas e pareceres passam de 100 mil registros em 2025 e iam encher o grafo de documentos de tramitação. A exceção são os poucos requerimentos que foram a votação nominal.</li>
 <li>Na autoria, ficaram só os autores que são deputados. Proposições do Senado ou do Executivo continuam no grafo, mas sem ligação de autoria.</li>
-<li>O arquivo de 2025 traz algumas proposições com data de apresentação fora do ano (40 em 2026 e 8 antes de 2017). Mantivemos como veio.</li>
+<li>O arquivo de 2025 traz algumas proposições com data de apresentação fora do ano (41 em 2026 e 8 antes de 2017). Mantivemos como veio.</li>
 </ul>
 
 <h2>3. Coleta dos dados</h2>
 <p>A coleta tem dois scripts em Python, só com biblioteca padrão (urllib e csv), então rodam sem instalar nada.</p>
 <p>O <b>01_coleta.py</b> busca os deputados na API REST (/deputados?idLegislatura=57), seguindo os links de paginação de 100 em 100, e baixa os arquivos CSV anuais do portal. Os deputados vieram da API porque o CSV de deputados do portal é histórico e não traz o partido atual. Os arquivos ficam em dados/brutos (cerca de 300 MB, sendo 98 MB só o de membros de frentes, que tem todas as legislaturas desde 2003).</p>
-{{CODIGO_COLETA}}
+<pre>&quot;&quot;&quot;
+Coleta dos dados do Portal de Dados Abertos da Câmara dos Deputados.
+
+- Deputados da 57ª legislatura (2023-2027) vêm da API REST (/deputados),
+  porque o CSV de deputados não traz o partido atual.
+- O resto vem dos arquivos CSV anuais (bulk) do portal, ano de 2025.
+
+Uso: python3 scripts/01_coleta.py
+Saída: dados/brutos/*.csv
+&quot;&quot;&quot;
+import csv
+import json
+import os
+import hashlib
+import time
+import urllib.request
+from datetime import datetime, timezone
+
+LEGISLATURA = 57
+ANO = 2025
+BASE_API = &quot;https://dadosabertos.camara.leg.br/api/v2&quot;
+BASE_ARQ = &quot;https://dadosabertos.camara.leg.br/arquivos&quot;
+PASTA = os.path.join(os.path.dirname(__file__), &quot;..&quot;, &quot;dados&quot;, &quot;brutos&quot;)
+
+ARQUIVOS = {
+    &quot;frentes.csv&quot;: f&quot;{BASE_ARQ}/frentes/csv/frentes.csv&quot;,
+    &quot;frentesDeputados.csv&quot;: f&quot;{BASE_ARQ}/frentesDeputados/csv/frentesDeputados.csv&quot;,
+    f&quot;proposicoes-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/proposicoes/csv/proposicoes-{ANO}.csv&quot;,
+    f&quot;proposicoesAutores-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/proposicoesAutores/csv/proposicoesAutores-{ANO}.csv&quot;,
+    f&quot;proposicoesTemas-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/proposicoesTemas/csv/proposicoesTemas-{ANO}.csv&quot;,
+    f&quot;votacoes-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/votacoes/csv/votacoes-{ANO}.csv&quot;,
+    f&quot;votacoesVotos-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/votacoesVotos/csv/votacoesVotos-{ANO}.csv&quot;,
+    f&quot;votacoesProposicoes-{ANO}.csv&quot;: f&quot;{BASE_ARQ}/votacoesProposicoes/csv/votacoesProposicoes-{ANO}.csv&quot;,
+}
+
+
+def get_json(url):
+    req = urllib.request.Request(url, headers={&quot;Accept&quot;: &quot;application/json&quot;})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.load(r)
+
+
+def coletar_deputados():
+    &quot;&quot;&quot;Percorre a paginação da API e salva os deputados da legislatura.&quot;&quot;&quot;
+    url = f&quot;{BASE_API}/deputados?idLegislatura={LEGISLATURA}&amp;itens=100&amp;ordem=ASC&amp;ordenarPor=nome&quot;
+    deputados = []
+    while url:
+        resp = get_json(url)
+        deputados.extend(resp[&quot;dados&quot;])
+        url = next((l[&quot;href&quot;] for l in resp[&quot;links&quot;] if l[&quot;rel&quot;] == &quot;next&quot;), None)
+
+    campos = [&quot;id&quot;, &quot;nome&quot;, &quot;siglaPartido&quot;, &quot;siglaUf&quot;, &quot;idLegislatura&quot;, &quot;email&quot;]
+    destino = os.path.join(PASTA, &quot;deputados.csv&quot;)
+    with open(destino, &quot;w&quot;, newline=&quot;&quot;, encoding=&quot;utf-8&quot;) as f:
+        w = csv.DictWriter(f, fieldnames=campos, delimiter=&quot;;&quot;, extrasaction=&quot;ignore&quot;)
+        w.writeheader()
+        w.writerows(deputados)
+    print(f&quot;deputados.csv: {len(deputados)} registros&quot;)
+
+
+def baixar_arquivos():
+    for nome, url in ARQUIVOS.items():
+        destino = os.path.join(PASTA, nome)
+        if os.path.exists(destino):
+            print(f&quot;{nome}: já existe, pulando&quot;)
+            continue
+        print(f&quot;baixando {nome} ...&quot;)
+        temporario = destino + &quot;.part&quot;
+        for tentativa in range(3):
+            try:
+                req = urllib.request.Request(url, headers={&quot;User-Agent&quot;: &quot;bdcd-coleta/1.0&quot;})
+                with urllib.request.urlopen(req, timeout=120) as origem, open(temporario, &quot;wb&quot;) as saida:
+                    while True:
+                        bloco = origem.read(1024 * 1024)
+                        if not bloco:
+                            break
+                        saida.write(bloco)
+                os.replace(temporario, destino)
+                break
+            except (OSError, TimeoutError):
+                if os.path.exists(temporario):
+                    os.remove(temporario)
+                if tentativa == 2:
+                    raise
+                time.sleep(2 ** tentativa)
+
+
+def registrar_fontes():
+    &quot;&quot;&quot;Registra URLs e hashes do snapshot local, sem guardar credenciais.&quot;&quot;&quot;
+    fontes = dict(ARQUIVOS)
+    fontes[&quot;deputados.csv&quot;] = f&quot;{BASE_API}/deputados?idLegislatura={LEGISLATURA}&amp;itens=100&amp;ordem=ASC&amp;ordenarPor=nome&quot;
+    arquivos = []
+    for nome, url in sorted(fontes.items()):
+        caminho = os.path.join(PASTA, nome)
+        digest = hashlib.sha256()
+        with open(caminho, &quot;rb&quot;) as arquivo:
+            for bloco in iter(lambda: arquivo.read(1024 * 1024), b&quot;&quot;):
+                digest.update(bloco)
+        arquivos.append({&quot;arquivo&quot;: &quot;brutos/&quot; + nome, &quot;url&quot;: url,
+                         &quot;bytes&quot;: os.path.getsize(caminho), &quot;sha256&quot;: digest.hexdigest()})
+    manifesto = {&quot;manifesto_em_utc&quot;: datetime.now(timezone.utc).isoformat(),
+                 &quot;ano&quot;: ANO, &quot;legislatura&quot;: LEGISLATURA, &quot;arquivos&quot;: arquivos}
+    with open(os.path.join(PASTA, &quot;..&quot;, &quot;fontes.json&quot;), &quot;w&quot;, encoding=&quot;utf-8&quot;) as arquivo:
+        json.dump(manifesto, arquivo, ensure_ascii=False, indent=2)
+        arquivo.write(&quot;\n&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    os.makedirs(PASTA, exist_ok=True)
+    coletar_deputados()
+    baixar_arquivos()
+    registrar_fontes()
+</pre>
 <p>O <b>02_preprocessamento.py</b> aplica os filtros descritos na seção anterior e gera CSVs menores, com só as colunas que vão para o grafo, na pasta dados/neo4j (cerca de 9 MB no total). As ementas são cortadas em 500 caracteres.</p>
-{{CODIGO_PREPROC}}
+<pre>&quot;&quot;&quot;
+Limpa e filtra os CSVs brutos e gera arquivos prontos pro LOAD CSV do Neo4j.
+
+Filtros:
+- Deputados: 57ª legislatura (último registro retornado para cada ID).
+- Frentes: só as da 57ª legislatura.
+- Proposições: apresentadas em 2025, só tipos de projeto (PL, PLP, PEC, PDL, MPV, PRC),
+  mais qualquer proposição (de qualquer ano) que tenha ido a votação nominal em 2025.
+- Autoria: só autores que são deputados da 57ª legislatura.
+- Votações: só as nominais de 2025 (as que têm votos individuais).
+
+Uso: python3 scripts/02_preprocessamento.py
+Saída: dados/neo4j/*.csv
+&quot;&quot;&quot;
+import csv
+import os
+import sys
+
+csv.field_size_limit(sys.maxsize)
+
+ANO = 2025
+LEG = &quot;57&quot;
+TIPOS = {&quot;PL&quot;, &quot;PLP&quot;, &quot;PEC&quot;, &quot;PDL&quot;, &quot;MPV&quot;, &quot;PRC&quot;}
+RAIZ = os.path.join(os.path.dirname(__file__), &quot;..&quot;, &quot;dados&quot;)
+BRUTOS = os.path.join(RAIZ, &quot;brutos&quot;)
+SAIDA = os.path.join(RAIZ, &quot;neo4j&quot;)
+
+
+def ler(nome):
+    with open(os.path.join(BRUTOS, nome), encoding=&quot;utf-8-sig&quot;, newline=&quot;&quot;) as f:
+        yield from csv.DictReader(f, delimiter=&quot;;&quot;)
+
+
+def escrever(nome, campos, linhas):
+    with open(os.path.join(SAIDA, nome), &quot;w&quot;, encoding=&quot;utf-8&quot;, newline=&quot;&quot;) as f:
+        w = csv.writer(f)
+        w.writerow(campos)
+        n = 0
+        for l in linhas:
+            w.writerow(l)
+            n += 1
+    print(f&quot;{nome}: {n} linhas&quot;)
+
+
+def limpa(txt, tam=500):
+    return &quot; &quot;.join((txt or &quot;&quot;).split())[:tam]
+
+
+def id_de_uri(uri):
+    return uri.rstrip(&quot;/&quot;).rsplit(&quot;/&quot;, 1)[-1]
+
+
+os.makedirs(SAIDA, exist_ok=True)
+
+# A ordem da API não garante cronologia de filiação: preservamos o último
+# registro retornado, sem interpretar esse partido como o partido de cada voto.
+deputados = {}
+for r in ler(&quot;deputados.csv&quot;):
+    deputados[r[&quot;id&quot;]] = r
+escrever(&quot;deputados.csv&quot;, [&quot;id&quot;, &quot;nome&quot;, &quot;partido&quot;, &quot;uf&quot;],
+         ([d[&quot;id&quot;], d[&quot;nome&quot;], d[&quot;siglaPartido&quot;], d[&quot;siglaUf&quot;]] for d in deputados.values()))
+
+# Frentes e membros
+frentes = {r[&quot;id&quot;]: r for r in ler(&quot;frentes.csv&quot;) if r[&quot;idLegislatura&quot;] == LEG}
+escrever(&quot;frentes.csv&quot;, [&quot;id&quot;, &quot;titulo&quot;, &quot;dataCriacao&quot;],
+         ([f[&quot;id&quot;], limpa(f[&quot;titulo&quot;]), f[&quot;dataCriacao&quot;]] for f in frentes.values()))
+escrever(&quot;frentes_membros.csv&quot;, [&quot;idFrente&quot;, &quot;idDeputado&quot;, &quot;papel&quot;],
+         ([r[&quot;id&quot;], r[&quot;deputado_.id&quot;], r[&quot;deputado_.titulo&quot;]] for r in ler(&quot;frentesDeputados.csv&quot;)
+          if r[&quot;id&quot;] in frentes and r[&quot;deputado_.id&quot;] in deputados))
+
+# Votações nominais
+votos = [r for r in ler(f&quot;votacoesVotos-{ANO}.csv&quot;)
+         if r[&quot;deputado_id&quot;] in deputados and r[&quot;voto&quot;].strip()]
+ids_votacoes = {v[&quot;idVotacao&quot;] for v in votos}
+escrever(&quot;votos.csv&quot;, [&quot;idVotacao&quot;, &quot;idDeputado&quot;, &quot;voto&quot;],
+         ([v[&quot;idVotacao&quot;], v[&quot;deputado_id&quot;], v[&quot;voto&quot;]] for v in votos))
+escrever(&quot;votacoes.csv&quot;, [&quot;id&quot;, &quot;data&quot;, &quot;orgao&quot;, &quot;aprovacao&quot;, &quot;votosSim&quot;, &quot;votosNao&quot;, &quot;descricao&quot;],
+         ([v[&quot;id&quot;], v[&quot;data&quot;], v[&quot;siglaOrgao&quot;], v[&quot;aprovacao&quot;], v[&quot;votosSim&quot;], v[&quot;votosNao&quot;],
+           limpa(v[&quot;descricao&quot;], 300)]
+          for v in ler(f&quot;votacoes-{ANO}.csv&quot;) if v[&quot;id&quot;] in ids_votacoes))
+
+# Ligação votação -&gt; proposição (e proposições votadas, mesmo de outros anos)
+vot_prop = [r for r in ler(f&quot;votacoesProposicoes-{ANO}.csv&quot;) if r[&quot;idVotacao&quot;] in ids_votacoes]
+escrever(&quot;votacoes_proposicoes.csv&quot;, [&quot;idVotacao&quot;, &quot;idProposicao&quot;],
+         ([r[&quot;idVotacao&quot;], r[&quot;proposicao_id&quot;]] for r in vot_prop))
+
+proposicoes = {}
+for r in vot_prop:
+    proposicoes[r[&quot;proposicao_id&quot;]] = [r[&quot;proposicao_id&quot;], r[&quot;proposicao_siglaTipo&quot;], r[&quot;proposicao_numero&quot;],
+                                       r[&quot;proposicao_ano&quot;], &quot;&quot;, limpa(r[&quot;proposicao_ementa&quot;])]
+for r in ler(f&quot;proposicoes-{ANO}.csv&quot;):
+    if r[&quot;siglaTipo&quot;] in TIPOS or r[&quot;id&quot;] in proposicoes:
+        proposicoes[r[&quot;id&quot;]] = [r[&quot;id&quot;], r[&quot;siglaTipo&quot;], r[&quot;numero&quot;], r[&quot;ano&quot;],
+                                r[&quot;dataApresentacao&quot;][:10], limpa(r[&quot;ementa&quot;])]
+escrever(&quot;proposicoes.csv&quot;, [&quot;id&quot;, &quot;siglaTipo&quot;, &quot;numero&quot;, &quot;ano&quot;, &quot;dataApresentacao&quot;, &quot;ementa&quot;],
+         proposicoes.values())
+
+# Autoria (só deputados)
+escrever(&quot;autorias.csv&quot;, [&quot;idProposicao&quot;, &quot;idDeputado&quot;, &quot;ordemAssinatura&quot;, &quot;proponente&quot;],
+         ([r[&quot;idProposicao&quot;], r[&quot;idDeputadoAutor&quot;], r[&quot;ordemAssinatura&quot;], r[&quot;proponente&quot;]]
+          for r in ler(f&quot;proposicoesAutores-{ANO}.csv&quot;)
+          if r[&quot;idProposicao&quot;] in proposicoes and r[&quot;idDeputadoAutor&quot;] in deputados))
+
+# Temas
+escrever(&quot;temas.csv&quot;, [&quot;idProposicao&quot;, &quot;codTema&quot;, &quot;tema&quot;],
+         ([id_de_uri(r[&quot;uriProposicao&quot;]), r[&quot;codTema&quot;], r[&quot;tema&quot;]]
+          for r in ler(f&quot;proposicoesTemas-{ANO}.csv&quot;) if id_de_uri(r[&quot;uriProposicao&quot;]) in proposicoes))
+</pre>
 
 <h2>4. Modelagem dos dados</h2>
 <p>O grafo tem 7 tipos de nó e 7 tipos de relacionamento. O deputado fica no centro, ligado ao partido, ao estado, às frentes, às proposições de que é autor e às votações em que votou.</p>
-{{IMG_ESQUEMA}}
+<figure><img src="../figuras/modelo_esquema.png" alt="Modelo do grafo"><figcaption>Modelo do grafo</figcaption></figure>
 <p>Algumas decisões do modelo:</p>
 <ul>
 <li>Partido e Estado são nós, e não só propriedades do deputado. Assim dá para agrupar e percorrer o grafo por eles (deputados do mesmo estado que votam juntos, por exemplo). A sigla também ficou como propriedade no Deputado, para facilitar filtros simples.</li>
@@ -37,40 +263,229 @@
 <li>MEMBRO_DE guarda o papel do deputado na frente (Membro ou Coordenador), e AUTOR_DE guarda a ordem de assinatura e se ele é o proponente.</li>
 </ul>
 <p>A figura abaixo mostra 2 exemplos reais de cada tipo de nó e de relacionamento, tirados do banco: os deputados Camila Jara (PT/MS) e Gilson Daniel (PODE/ES), cada um com uma frente, um projeto de lei de sua autoria, a votação de urgência desse projeto e os temas. Um detalhe que o exemplo mostra: Camila votou Não na urgência do projeto do Gilson, e Gilson votou Sim na urgência do projeto dela.</p>
-{{IMG_EXEMPLOS}}
+<figure><img src="../figuras/modelo_exemplos.png" alt="Dois exemplos de cada nó e relacionamento"><figcaption>Dois exemplos de cada nó e relacionamento</figcaption></figure>
 
 <h2>5. Importação no Neo4j</h2>
 <p>A importação usa LOAD CSV, rodado pelo cypher-shell num container Docker com Neo4j 5.26 (a pasta dados/neo4j foi montada como pasta de import). Antes de carregar, o script cria uma restrição de unicidade para cada tipo de nó, o que também cria o índice usado nos MATCH das arestas. Os arquivos maiores (votos e membros de frentes) são carregados com CALL IN TRANSACTIONS, em lotes de 5 a 10 mil linhas. A carga toda levou cerca de 12 segundos.</p>
-{{CODIGO_IMPORT}}
+<pre>// Importação dos dados da Câmara (57ª legislatura, ano 2025) no Neo4j 5.
+// Os CSVs de dados/neo4j precisam estar na pasta import do Neo4j.
+
+// ---------- Restrições (também criam índices) ----------
+CREATE CONSTRAINT deputado_id IF NOT EXISTS FOR (d:Deputado) REQUIRE d.id IS UNIQUE;
+CREATE CONSTRAINT partido_sigla IF NOT EXISTS FOR (p:Partido) REQUIRE p.sigla IS UNIQUE;
+CREATE CONSTRAINT estado_uf IF NOT EXISTS FOR (e:Estado) REQUIRE e.uf IS UNIQUE;
+CREATE CONSTRAINT frente_id IF NOT EXISTS FOR (f:Frente) REQUIRE f.id IS UNIQUE;
+CREATE CONSTRAINT proposicao_id IF NOT EXISTS FOR (p:Proposicao) REQUIRE p.id IS UNIQUE;
+CREATE CONSTRAINT tema_cod IF NOT EXISTS FOR (t:Tema) REQUIRE t.cod IS UNIQUE;
+CREATE CONSTRAINT votacao_id IF NOT EXISTS FOR (v:Votacao) REQUIRE v.id IS UNIQUE;
+
+// ---------- Deputados, partidos e estados ----------
+LOAD CSV WITH HEADERS FROM &#x27;file:///deputados.csv&#x27; AS r
+MERGE (d:Deputado {id: toInteger(r.id)})
+  SET d.nome = r.nome, d.partido = r.partido, d.uf = r.uf
+MERGE (p:Partido {sigla: r.partido})
+MERGE (e:Estado {uf: r.uf})
+MERGE (d)-[:FILIADO_A]-&gt;(p)
+MERGE (d)-[:REPRESENTA]-&gt;(e);
+
+// ---------- Frentes parlamentares ----------
+LOAD CSV WITH HEADERS FROM &#x27;file:///frentes.csv&#x27; AS r
+MERGE (f:Frente {id: toInteger(r.id)})
+  SET f.titulo = r.titulo, f.dataCriacao = date(r.dataCriacao);
+
+LOAD CSV WITH HEADERS FROM &#x27;file:///frentes_membros.csv&#x27; AS r
+CALL (r) {
+  MATCH (d:Deputado {id: toInteger(r.idDeputado)})
+  MATCH (f:Frente {id: toInteger(r.idFrente)})
+  MERGE (d)-[m:MEMBRO_DE]-&gt;(f)
+    SET m.papel = r.papel
+} IN TRANSACTIONS OF 5000 ROWS;
+
+// ---------- Proposições, autoria e temas ----------
+LOAD CSV WITH HEADERS FROM &#x27;file:///proposicoes.csv&#x27; AS r
+CALL (r) {
+  MERGE (p:Proposicao {id: toInteger(r.id)})
+    SET p.siglaTipo = r.siglaTipo,
+        p.numero = toInteger(r.numero),
+        p.ano = toInteger(r.ano),
+        p.nome = r.siglaTipo + &#x27; &#x27; + r.numero + &#x27;/&#x27; + r.ano,
+        p.dataApresentacao = CASE r.dataApresentacao WHEN &#x27;&#x27; THEN null ELSE date(r.dataApresentacao) END,
+        p.ementa = r.ementa
+} IN TRANSACTIONS OF 5000 ROWS;
+
+LOAD CSV WITH HEADERS FROM &#x27;file:///autorias.csv&#x27; AS r
+CALL (r) {
+  MATCH (d:Deputado {id: toInteger(r.idDeputado)})
+  MATCH (p:Proposicao {id: toInteger(r.idProposicao)})
+  MERGE (d)-[a:AUTOR_DE]-&gt;(p)
+    SET a.ordemAssinatura = toInteger(r.ordemAssinatura),
+        a.proponente = r.proponente = &#x27;1&#x27;
+} IN TRANSACTIONS OF 5000 ROWS;
+
+LOAD CSV WITH HEADERS FROM &#x27;file:///temas.csv&#x27; AS r
+CALL (r) {
+  MATCH (p:Proposicao {id: toInteger(r.idProposicao)})
+  MERGE (t:Tema {cod: toInteger(r.codTema)})
+    SET t.nome = r.tema
+  MERGE (p)-[:TRATA_DE]-&gt;(t)
+} IN TRANSACTIONS OF 5000 ROWS;
+
+// ---------- Votações e votos ----------
+LOAD CSV WITH HEADERS FROM &#x27;file:///votacoes.csv&#x27; AS r
+MERGE (v:Votacao {id: r.id})
+  SET v.data = date(r.data),
+      v.orgao = r.orgao,
+      v.aprovada = r.aprovacao = &#x27;1&#x27;,
+      v.votosSim = toInteger(r.votosSim),
+      v.votosNao = toInteger(r.votosNao),
+      v.descricao = r.descricao;
+
+LOAD CSV WITH HEADERS FROM &#x27;file:///votacoes_proposicoes.csv&#x27; AS r
+MATCH (v:Votacao {id: r.idVotacao})
+MATCH (p:Proposicao {id: toInteger(r.idProposicao)})
+MERGE (v)-[:SOBRE]-&gt;(p);
+
+LOAD CSV WITH HEADERS FROM &#x27;file:///votos.csv&#x27; AS r
+CALL (r) {
+  WITH r WHERE r.voto IS NOT NULL AND r.voto &lt;&gt; &#x27;&#x27;
+  MATCH (d:Deputado {id: toInteger(r.idDeputado)})
+  MATCH (v:Votacao {id: r.idVotacao})
+  MERGE (d)-[x:VOTOU]-&gt;(v)
+    SET x.voto = r.voto
+} IN TRANSACTIONS OF 10000 ROWS;
+</pre>
 <p>Comando usado para rodar o script:</p>
-{{CODIGO_CMD}}
+<pre>docker compose up -d --wait
+docker compose exec -T neo4j cypher-shell &lt; scripts/03_importacao.cypher
+python3 scripts/06_validar.py --neo4j</pre>
 <p>Contagem depois da importação, que bate com o número de linhas dos CSVs:</p>
-{{TABELA_CONTAGEM}}
+<table><thead><tr><th>Nó</th><th>Quantidade</th><th>Relacionamento</th><th>Quantidade</th></tr></thead><tbody><tr><td>Deputado</td><td>648</td><td>FILIADO_A</td><td>648</td></tr><tr><td>Frente</td><td>320</td><td>REPRESENTA</td><td>648</td></tr><tr><td>Proposicao</td><td>8248</td><td>MEMBRO_DE</td><td>65313</td></tr><tr><td>Votacao</td><td>549</td><td>AUTOR_DE</td><td>13123</td></tr><tr><td>Tema</td><td>32</td><td>TRATA_DE</td><td>19379</td></tr><tr><td>Partido</td><td>22</td><td>SOBRE</td><td>568</td></tr><tr><td>Estado</td><td>27</td><td>VOTOU</td><td>174646</td></tr><tr><td>Total</td><td>9846</td><td>Total</td><td>274325</td></tr></tbody></table>
 
 <h2>6. Consulta visual dos dados importados</h2>
-<p>O banco tem 11.476 nós e cerca de 274 mil relacionamentos, e o Neo4j Browser não consegue desenhar tudo isso de uma vez. Por isso a consulta abaixo pega uma amostra que tem todos os tipos de nó e de relacionamento: deputados que votaram na votação de um PL de que são autores, com partido, estado, temas do PL e duas frentes de cada um.</p>
-{{CODIGO_VISUAL}}
+<p>O banco tem 9.846 nós e cerca de 274 mil relacionamentos, e o Neo4j Browser não consegue desenhar tudo isso de uma vez. Por isso a consulta abaixo pega uma amostra que tem todos os tipos de nó e de relacionamento: deputados que votaram na votação de um PL de que são autores, com partido, estado, temas do PL e duas frentes de cada um.</p>
+<pre>// Amostra do grafo com todos os tipos de nó e de relacionamento (para o print do Neo4j Browser).
+MATCH (d:Deputado)-[a:AUTOR_DE]-&gt;(p:Proposicao {siglaTipo: &#x27;PL&#x27;})&lt;-[s:SOBRE]-(v:Votacao)&lt;-[vo:VOTOU]-(d)
+WITH d, a, p, s, v, vo LIMIT 6
+MATCH (d)-[f:FILIADO_A]-&gt;(pa:Partido)
+MATCH (d)-[r:REPRESENTA]-&gt;(e:Estado)
+MATCH (p)-[t:TRATA_DE]-&gt;(tm:Tema)
+CALL (d) { MATCH (d)-[m:MEMBRO_DE]-&gt;(fr:Frente) RETURN m, fr LIMIT 2 }
+RETURN *;
+</pre>
 <p>No resultado aparecem 21 nós e 25 relacionamentos, com os 7 rótulos e os 7 tipos de aresta listados no painel da direita.</p>
-{{IMG_VISUAL}}
+<figure><img src="../figuras/consulta_visual.png" alt="Amostra visual no Neo4j Browser"><figcaption>Amostra visual no Neo4j Browser</figcaption></figure>
 
 <h2>7. Perguntas e consultas Cypher</h2>
-<p>(parte da dupla)</p>
+<p>As consultas a seguir usam o snapshot coletado em 25/11/2026. Proposições são contadas por identificador distinto, evitando multiplicar os resultados quando há vários autores ou temas. Os partidos correspondem ao registro de deputado mantido na coleta; não constituem um histórico de filiação na data de cada voto. Os prints mostram as principais colunas de cada resultado no Neo4j Browser; os arquivos CSV e JSON preservam a saída completa.</p><section><h3>7.1. Especialização temática por UF</h3><p>Em quais temas os deputados de uma UF apresentam participação proporcionalmente maior que a observada no conjunto nacional?</p><p>O índice divide a proporção de proposições de um tema na UF pela proporção desse tema no conjunto nacional. O universo contém 7.151 proposições de ano 2025 com pelo menos um autor deputado e classificação temática. A consulta exige pelo menos 100 proposições na UF e 30 no tema. Um projeto conta uma vez em cada UF com autor, e pode integrar vários temas.</p><pre>// Q1: Em quais temas as UFs têm participação proporcionalmente maior?
+// Unidade: proposição distinta de 2025 com autor deputado e tema cadastrado.
+MATCH (p:Proposicao {ano: 2025})
+WHERE EXISTS { (:Deputado)-[:AUTOR_DE]-&gt;(p) }
+  AND EXISTS { (p)-[:TRATA_DE]-&gt;(:Tema) }
+WITH count(p) AS totalBrasil
+MATCH (e:Estado)&lt;-[:REPRESENTA]-(:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})-[:TRATA_DE]-&gt;(t:Tema)
+WITH totalBrasil, e, t, count(DISTINCT p) AS projetosTemaUF
+CALL (e) {
+  MATCH (e)&lt;-[:REPRESENTA]-(:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})
+  WHERE EXISTS { (p)-[:TRATA_DE]-&gt;(:Tema) }
+  RETURN count(DISTINCT p) AS totalUF
+}
+CALL (t) {
+  MATCH (p:Proposicao {ano: 2025})-[:TRATA_DE]-&gt;(t)
+  WHERE EXISTS { (:Deputado)-[:AUTOR_DE]-&gt;(p) }
+  RETURN count(DISTINCT p) AS projetosTemaBrasil
+}
+WITH *, (1.0 * projetosTemaUF / totalUF) / (1.0 * projetosTemaBrasil / totalBrasil) AS indice
+WHERE totalUF &gt;= 100 AND projetosTemaUF &gt;= 30
+RETURN e.uf AS uf, t.nome AS tema, projetosTemaUF, totalUF,
+       projetosTemaBrasil, totalBrasil,
+       round(100.0 * projetosTemaUF / totalUF, 2) AS percentualUF,
+       round(100.0 * projetosTemaBrasil / totalBrasil, 2) AS percentualBrasil,
+       round(indice, 3) AS indiceEspecializacao
+ORDER BY indice DESC, projetosTemaUF DESC, uf, tema LIMIT 10;
+</pre><figure><img src="../figuras/consulta_01.png" alt="Consulta 1: resultado no Neo4j Browser (colunas principais)"><figcaption>Consulta 1: resultado no Neo4j Browser (colunas principais)</figcaption></figure><p>Mato Grosso do Sul se destaca em Estrutura Fundiária: 36 das 258 proposições associadas à UF tratam do tema, ou 13,95%, diante de 1,79% no conjunto nacional. O índice de 7,795 indica uma participação relativa quase oito vezes maior. Santa Catarina também apresenta concentração em Economia, com 16,29% de suas proposições ante 8,08% no conjunto nacional, índice de 2,015.</p><p>A normalização permite comparar UFs com volumes de produção diferentes e revela concentrações que um ranking de quantidades esconderia. O resultado descreve a pauta das proposições assinadas pelos deputados do recorte; não mede a preferência da população nem demonstra que características econômicas da UF causaram essa concentração. Como as assinaturas de apoio também contam como autoria, uma iniciativa coletiva pode influenciar o perfil observado.</p></section><section><h3>7.2. Pontes de coautoria entre partidos</h3><p>Quais pares de partidos compartilham mais proposições por coautoria, e essa aproximação continua alta quando se considera o tamanho de suas produções?</p><p>A consulta percorre Partido–Deputado–Proposição–Deputado–Partido e conta proposições distintas de ano 2025 por par de partidos. A similaridade de Jaccard é a interseção dividida pela união das proposições dos dois partidos, multiplicada por 100. A ordenação usa o volume compartilhado e evita repetir o mesmo par em ordem inversa.</p><pre>// Q2: Quais pares de partidos compartilham mais proposições por coautoria?
+// Cada projeto conta uma vez por par; pares são ordenados para evitar espelhos.
+MATCH (a:Partido)&lt;-[:FILIADO_A]-(:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})
+      &lt;-[:AUTOR_DE]-(:Deputado)-[:FILIADO_A]-&gt;(b:Partido)
+WHERE a.sigla &lt; b.sigla
+WITH a, b, count(DISTINCT p) AS projetosCompartilhados
+CALL (a) {
+  MATCH (a)&lt;-[:FILIADO_A]-(:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})
+  RETURN count(DISTINCT p) AS projetosA
+}
+CALL (b) {
+  MATCH (b)&lt;-[:FILIADO_A]-(:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})
+  RETURN count(DISTINCT p) AS projetosB
+}
+RETURN a.sigla AS partidoA, b.sigla AS partidoB, projetosCompartilhados,
+       projetosA, projetosB,
+       round(100.0 * projetosCompartilhados / (projetosA + projetosB - projetosCompartilhados), 2) AS jaccardPercentual
+ORDER BY projetosCompartilhados DESC, partidoA, partidoB LIMIT 10;
+</pre><figure><img src="../figuras/consulta_02.png" alt="Consulta 2: resultado no Neo4j Browser (colunas principais)"><figcaption>Consulta 2: resultado no Neo4j Browser (colunas principais)</figcaption></figure><p>PL e UNIÃO formam o par com maior número de proposições compartilhadas: 83. Entretanto, essas proposições representam apenas 3,92% da união de suas produções. PL e REPUBLICANOS aparecem em seguida, com 79 e Jaccard de 3,00%. Entre os dez pares listados, PP e UNIÃO têm menos proposições em comum, 62, mas maior similaridade proporcional, de 6,47%.</p><p>O volume absoluto identifica pontes relevantes pela quantidade de iniciativas, enquanto Jaccard mostra quanto essas pontes representam no conjunto das pautas de cada par. Assim, produzir muito pode elevar a contagem compartilhada sem gerar grande sobreposição proporcional. A coautoria expressa assinatura em proposições e pode incluir apoio; ela não comprova uma aliança estável nem concordância nas votações.</p></section><section><h3>7.3. Pluralidade partidária das frentes</h3><p>Quais frentes parlamentares reúnem uma composição partidária mais distribuída, em vez de apenas muitos partidos com participações desiguais?</p><p>Para frentes com pelo menos 100 deputados cadastrados, calcula-se o número efetivo de partidos: 1 dividido pela soma dos quadrados das participações partidárias. Se todos os partidos tivessem o mesmo número de membros, o indicador seria igual à quantidade de partidos. A consulta também retorna o tamanho da maior bancada.</p><pre>// Q3: Quais frentes têm composição partidária mais distribuída?
+// Número efetivo = 1 / soma das proporções partidárias ao quadrado.
+MATCH (f:Frente)&lt;-[:MEMBRO_DE]-(d:Deputado)-[:FILIADO_A]-&gt;(p:Partido)
+WITH f, p, count(DISTINCT d) AS membrosPartido
+WITH f, sum(membrosPartido) AS membros, count(*) AS partidos,
+     max(membrosPartido) AS maiorBancada, sum(membrosPartido * membrosPartido) AS somaQuadrados
+WHERE membros &gt;= 100
+RETURN f.id AS idFrente, f.titulo AS frente, membros, partidos,
+       round(100.0 * maiorBancada / membros, 2) AS maiorBancadaPercentual,
+       round(1.0 * membros * membros / somaQuadrados, 3) AS numeroEfetivoPartidos
+ORDER BY numeroEfetivoPartidos DESC, membros DESC, idFrente LIMIT 10;
+</pre><figure><img src="../figuras/consulta_03.png" alt="Consulta 3: resultado no Neo4j Browser (colunas principais)"><figcaption>Consulta 3: resultado no Neo4j Browser (colunas principais)</figcaption></figure><p>A Frente Parlamentar para a Modernização do Futebol Brasileiro lidera o indicador: tem 186 membros, 21 partidos e número efetivo de 12,046. Sua maior bancada representa 14,52% dos membros. A Frente Parlamentar Mista em Defesa da Amazônia aparece em seguida, com 199 membros, 20 partidos e número efetivo de 11,881; sua maior bancada concentra 14,07%.</p><p>A diferença entre os 21 partidos presentes e os cerca de 12 partidos efetivos no primeiro caso mostra que presença e equilíbrio são medidas diferentes. O indicador distingue composições mais distribuídas mesmo quando várias frentes têm quantidades semelhantes de partidos. Os vínculos registram integrantes cadastrados, não frequência em reuniões ou atuação conjunta; por isso, pluralidade formal não deve ser confundida com cooperação efetiva.</p></section><section><h3>7.4. Coesão dos agrupamentos partidários no Plenário</h3><p>Quão frequentemente os votos de cada agrupamento partidário acompanham sua própria maioria nas votações de Plenário?</p><p>São usados apenas votos Sim e Não, em votações com pelo menos cinco deputados do agrupamento e partidos com pelo menos 100 votações elegíveis. A coesão é a soma dos votos do lado majoritário em cada votação dividida pelo total de votos comparáveis. Em caso de empate, metade dos votos integra o numerador. A medida é ponderada pelo número de votos, e não uma média simples entre sessões.</p><pre>// Q4: Quão coesos são os agrupamentos partidários nos votos de Plenário?
+// Só Sim/Não. Empate fica no denominador com maioria de 50%.
+MATCH (p:Partido)&lt;-[:FILIADO_A]-(d:Deputado)-[r:VOTOU]-&gt;(v:Votacao {orgao: &#x27;PLEN&#x27;})
+WHERE r.voto IN [&#x27;Sim&#x27;, &#x27;Não&#x27;]
+WITH p, v, count(DISTINCT d) AS presentes,
+     sum(CASE WHEN r.voto = &#x27;Sim&#x27; THEN 1 ELSE 0 END) AS sim
+WHERE presentes &gt;= 5
+WITH p, count(*) AS votacoes, sum(presentes) AS votos,
+     sum(CASE WHEN sim &gt;= presentes - sim THEN sim ELSE presentes - sim END) AS votosMajoritarios
+WHERE votacoes &gt;= 100
+RETURN p.sigla AS partido, votacoes, votos, votosMajoritarios,
+       round(100.0 * votosMajoritarios / votos, 2) AS coesaoPercentual
+ORDER BY coesaoPercentual DESC, partido;
+</pre><figure><img src="../figuras/consulta_04.png" alt="Consulta 4: resultado no Neo4j Browser (colunas principais)"><figcaption>Consulta 4: resultado no Neo4j Browser (colunas principais)</figcaption></figure><p>NOVO apresenta coesão de 99,39% em 196 votações elegíveis, com 974 de 980 votos no lado majoritário. PSOL registra 98,79%, e PT, 98,29%, este último com 23.119 de 23.521 votos majoritários em 427 votações. No outro extremo da lista elegível, PODE apresenta 82,88%, PP 83,91% e PSD 83,68%, indicando maior divisão interna nesses agrupamentos.</p><p>Os valores mostram que os agrupamentos diferem na frequência de concordância interna, mas a comparação exige observar os denominadores: o conjunto de votações do NOVO é menor que o de partidos maiores. A métrica não mede apoio ao governo nem cumprimento de orientação partidária, pois compara os votos à maioria do próprio grupo. Além disso, agrupar pela filiação mantida na coleta impede interpretar o resultado como uma medida histórica exata de disciplina partidária em 2025.</p></section><section><h3>7.5. Coautoria frequente e divergência no voto</h3><p>Deputados de partidos diferentes que assinam projetos juntos também podem divergir frequentemente nas votações?</p><p>A consulta seleciona pares de partidos diferentes com pelo menos dez proposições conjuntas de ano 2025 e cem votações de Plenário com votos Sim ou Não de ambos. A afinidade é o número de votos iguais dividido pelos votos comparáveis. O resultado destaca os dez pares de menor afinidade nesse universo e conta as frentes que compartilham.</p><pre>// Q5: Coautores de partidos diferentes também divergem no voto?
+// Coautores frequentes: &gt;=10 proposições conjuntas e &gt;=100 votos comparáveis.
+MATCH (a:Deputado)-[:AUTOR_DE]-&gt;(p:Proposicao {ano: 2025})&lt;-[:AUTOR_DE]-(b:Deputado)
+WHERE a.id &lt; b.id AND a.partido &lt;&gt; b.partido
+WITH a, b, count(DISTINCT p) AS coautorias
+WHERE coautorias &gt;= 10
+CALL (a, b) {
+  MATCH (a)-[ra:VOTOU]-&gt;(v:Votacao {orgao: &#x27;PLEN&#x27;})&lt;-[rb:VOTOU]-(b)
+  WHERE ra.voto IN [&#x27;Sim&#x27;, &#x27;Não&#x27;] AND rb.voto IN [&#x27;Sim&#x27;, &#x27;Não&#x27;]
+  RETURN count(*) AS votosComuns,
+         sum(CASE WHEN ra.voto = rb.voto THEN 1 ELSE 0 END) AS votosIguais
+}
+WITH * WHERE votosComuns &gt;= 100
+WITH *, 1.0 * votosIguais / votosComuns AS afinidade
+ORDER BY afinidade ASC, coautorias DESC, a.id, b.id LIMIT 10
+CALL (a, b) {
+  MATCH (a)-[:MEMBRO_DE]-&gt;(f:Frente)&lt;-[:MEMBRO_DE]-(b)
+  RETURN count(DISTINCT f) AS frentesComuns
+}
+RETURN a.nome AS deputadoA, a.partido AS partidoA,
+       b.nome AS deputadoB, b.partido AS partidoB,
+       coautorias, frentesComuns, votosComuns, votosIguais,
+       round(100.0 * afinidade, 2) AS afinidadePercentual
+ORDER BY afinidadePercentual ASC, coautorias DESC, deputadoA, deputadoB;
+</pre><figure><img src="../figuras/consulta_05.png" alt="Consulta 5: resultado no Neo4j Browser (colunas principais)"><figcaption>Consulta 5: resultado no Neo4j Browser (colunas principais)</figcaption></figure><p>Bacelar (PV) e Dr. Fernando Máximo (PL) compartilham dez proposições e 134 frentes, mas votaram da mesma forma em apenas 82 de 289 votações comparáveis: afinidade de 28,37%. Laura Carneiro (PSD) e Luiz Lima (NOVO) têm onze coautorias, 87 frentes em comum e 97 votos iguais em 336 comparações, ou 28,87%. Esses casos combinam vínculos de produção legislativa e participação em frentes com forte divergência nas escolhas de voto.</p><p>O cruzamento mostra que proximidade em uma camada do grafo não garante proximidade nas demais. Assinar uma proposição ou integrar a mesma frente pode envolver uma pauta específica, enquanto o conjunto de votações inclui assuntos e etapas de tramitação variados. Como a consulta escolhe os pares mais divergentes entre coautores frequentes, esses casos não representam a afinidade média de todos os deputados nem provam que as frentes produzem divergência.</p></section>
 
 <h2>8. Conclusão</h2>
-<p>(parte da dupla)</p>
+<p>A modelagem em grafo permitiu observar a atividade parlamentar por caminhos que ligam território, autoria, partidos, frentes e votos. As consultas mostraram concentrações temáticas por UF, diferenças entre volume e proporção de coautoria, pluralidade formal nas frentes e níveis distintos de coesão nos votos. O cruzamento entre coautoria e votação acrescentou um resultado relevante: vínculos numerosos em projetos e frentes podem coexistir com baixa concordância nas decisões de Plenário.</p><p>Os principais desafios foram integrar identificadores de fontes diferentes, tratar registros repetidos e votos vazios e distinguir proposição de votação. As restrições de unicidade, a carga em lotes e a conferência entre CSVs e Neo4j tornaram o processo verificável. A reprodução das cinco métricas diretamente em Python confirmou os resultados das consultas. O projeto também evidenciou a importância de definir denominadores e limites de interpretação: filiação sem histórico, assinaturas de apoio e recortes de votação influenciam as conclusões. Como continuidade, o modelo pode incorporar filiação na data de cada voto e ampliar a série temporal para investigar a estabilidade dessas relações.</p>
 
 <h2>9. Repositório</h2>
-<p>(colocar o link do GitHub)</p>
+<p><a href="https://github.com/RafaMortandela/trabalho2-bdcd">https://github.com/RafaMortandela/trabalho2-bdcd</a></p>
 <p>Estrutura da pasta:</p>
 <ul>
 <li>scripts/01_coleta.py: baixa os dados da API e os CSVs do portal</li>
 <li>scripts/02_preprocessamento.py: filtra e gera os CSVs para o Neo4j</li>
 <li>scripts/03_importacao.cypher: cria as restrições e carrega o grafo</li>
 <li>scripts/04_consulta_visual.cypher: consulta usada no print</li>
-<li>dados/brutos: arquivos originais do portal</li>
+<li>dados/brutos: arquivos originais disponíveis na <a href="https://github.com/RafaMortandela/trabalho2-bdcd/releases/tag/v1.0-entrega">release da entrega</a>; URLs e hashes em dados/fontes.json</li>
 <li>dados/neo4j: CSVs limpos usados na importação</li>
 <li>figuras: diagramas do modelo e print do Neo4j Browser</li>
-</ul>
+<li>consultas/: cinco consultas analíticas</li><li>resultados/: CSVs, JSONs e validação</li><li>scripts/05 a 07: execução e conferência das métricas</li><li>compose.yaml: ambiente reproduzível</li></ul>
 
 <h2>10. Relatório de uso de IA</h2>
-<p>(parte da dupla)</p>
+<h3>Ferramentas e escopo</h3><p>Codex e Claude foram utilizados como apoio ao desenvolvimento do código, à compreensão da modelagem em grafos e à elaboração do relatório. O apoio incluiu consultas Cypher, revisão de scripts e organização das análises dos resultados.</p><h3>Prompts e interações</h3><p>As interações foram contextualizadas com o enunciado, o repositório e o relatório existente. Os pedidos envolveram identificar requisitos incompletos, formular cinco perguntas analíticas e convertê-las em consultas. O refinamento concentrou-se em contar proposições distintas, definir denominadores, estabelecer filtros mínimos de suporte e distinguir coautoria de concordância no voto.</p><h3>Intervenção e integração ao projeto</h3><p>Os scripts de coleta, pré-processamento e importação, assim como os diagramas, já compunham a estrutura inicial. As consultas analíticas, a conferência independente das métricas e as instruções de reprodução foram desenvolvidas com apoio de IA e integradas a esse fluxo. O tratamento dos votos vazios e as contagens do relatório foram ajustados para manter consistência entre os arquivos tratados e o grafo.</p><h3>Validação e testes</h3><p>A validação conferiu unicidade de chaves, referências entre arquivos, domínio dos votos e contagens de nós e relacionamentos. A importação foi executada novamente para verificar que não duplicava dados. As cinco consultas foram executadas no Neo4j e seus resultados foram recalculados em Python a partir dos CSVs, incluindo proporções, interseções, índices e ordenação. Os arquivos de resultados e os scripts de conferência estão disponíveis no repositório.</p>
+</body></html>
