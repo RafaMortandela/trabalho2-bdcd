@@ -15,4 +15,3 @@ Os scripts de coleta, pré-processamento e importação, assim como os diagramas
 ## Validação e testes
 
 A validação conferiu unicidade de chaves, referências entre arquivos, domínio dos votos e contagens de nós e relacionamentos. A importação foi executada novamente para verificar que não duplicava dados. As cinco consultas foram executadas no Neo4j e seus resultados foram recalculados em Python a partir dos CSVs, incluindo proporções, interseções, índices e ordenação. Os arquivos de resultados e os scripts de conferência estão disponíveis no repositório.
-
