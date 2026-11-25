@@ -2,7 +2,7 @@
 Limpa e filtra os CSVs brutos e gera arquivos prontos pro LOAD CSV do Neo4j.
 
 Filtros:
-- Deputados: 57ª legislatura (um registro por deputado, partido mais recente).
+- Deputados: 57ª legislatura (último registro retornado para cada ID).
 - Frentes: só as da 57ª legislatura.
 - Proposições: apresentadas em 2025, só tipos de projeto (PL, PLP, PEC, PDL, MPV, PRC),
   mais qualquer proposição (de qualquer ano) que tenha ido a votação nominal em 2025.
@@ -52,7 +52,8 @@ def id_de_uri(uri):
 
 os.makedirs(SAIDA, exist_ok=True)
 
-# Deputados (a API repete o deputado quando ele troca de partido; fica o último)
+# A ordem da API não garante cronologia de filiação: preservamos o último
+# registro retornado, sem interpretar esse partido como o partido de cada voto.
 deputados = {}
 for r in ler("deputados.csv"):
     deputados[r["id"]] = r
@@ -68,7 +69,8 @@ escrever("frentes_membros.csv", ["idFrente", "idDeputado", "papel"],
           if r["id"] in frentes and r["deputado_.id"] in deputados))
 
 # Votações nominais
-votos = [r for r in ler(f"votacoesVotos-{ANO}.csv") if r["deputado_id"] in deputados]
+votos = [r for r in ler(f"votacoesVotos-{ANO}.csv")
+         if r["deputado_id"] in deputados and r["voto"].strip()]
 ids_votacoes = {v["idVotacao"] for v in votos}
 escrever("votos.csv", ["idVotacao", "idDeputado", "voto"],
          ([v["idVotacao"], v["deputado_id"], v["voto"]] for v in votos))

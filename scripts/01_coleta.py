@@ -11,7 +11,10 @@ Saída: dados/brutos/*.csv
 import csv
 import json
 import os
+import hashlib
+import time
 import urllib.request
+from datetime import datetime, timezone
 
 LEGISLATURA = 57
 ANO = 2025
@@ -62,10 +65,48 @@ def baixar_arquivos():
             print(f"{nome}: já existe, pulando")
             continue
         print(f"baixando {nome} ...")
-        urllib.request.urlretrieve(url, destino)
+        temporario = destino + ".part"
+        for tentativa in range(3):
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "bdcd-coleta/1.0"})
+                with urllib.request.urlopen(req, timeout=120) as origem, open(temporario, "wb") as saida:
+                    while True:
+                        bloco = origem.read(1024 * 1024)
+                        if not bloco:
+                            break
+                        saida.write(bloco)
+                os.replace(temporario, destino)
+                break
+            except (OSError, TimeoutError):
+                if os.path.exists(temporario):
+                    os.remove(temporario)
+                if tentativa == 2:
+                    raise
+                time.sleep(2 ** tentativa)
+
+
+def registrar_fontes():
+    """Registra URLs e hashes do snapshot local, sem guardar credenciais."""
+    fontes = dict(ARQUIVOS)
+    fontes["deputados.csv"] = f"{BASE_API}/deputados?idLegislatura={LEGISLATURA}&itens=100&ordem=ASC&ordenarPor=nome"
+    arquivos = []
+    for nome, url in sorted(fontes.items()):
+        caminho = os.path.join(PASTA, nome)
+        digest = hashlib.sha256()
+        with open(caminho, "rb") as arquivo:
+            for bloco in iter(lambda: arquivo.read(1024 * 1024), b""):
+                digest.update(bloco)
+        arquivos.append({"arquivo": "brutos/" + nome, "url": url,
+                         "bytes": os.path.getsize(caminho), "sha256": digest.hexdigest()})
+    manifesto = {"manifesto_em_utc": datetime.now(timezone.utc).isoformat(),
+                 "ano": ANO, "legislatura": LEGISLATURA, "arquivos": arquivos}
+    with open(os.path.join(PASTA, "..", "fontes.json"), "w", encoding="utf-8") as arquivo:
+        json.dump(manifesto, arquivo, ensure_ascii=False, indent=2)
+        arquivo.write("\n")
 
 
 if __name__ == "__main__":
     os.makedirs(PASTA, exist_ok=True)
     coletar_deputados()
     baixar_arquivos()
+    registrar_fontes()

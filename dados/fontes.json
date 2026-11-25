@@ -1,0 +1,61 @@
+{
+  "manifesto_em_utc": "2026-11-25T17:54:10.202643+00:00",
+  "ano": 2025,
+  "legislatura": 57,
+  "arquivos": [
+    {
+      "arquivo": "brutos/deputados.csv",
+      "url": "https://dadosabertos.camara.leg.br/api/v2/deputados?idLegislatura=57&itens=100&ordem=ASC&ordenarPor=nome",
+      "bytes": 52997,
+      "sha256": "b3a9ba39db74867947913c626621e23f760cabbf6bd7396df0dfeb820d3a3963"
+    },
+    {
+      "arquivo": "brutos/frentes.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/frentes/csv/frentes.csv",
+      "bytes": 1441134,
+      "sha256": "9fdcf9d76d80ba8cb674812e91d36927655c84ac932ee17f42c2c0635473e97d"
+    },
+    {
+      "arquivo": "brutos/frentesDeputados.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/frentesDeputados/csv/frentesDeputados.csv",
+      "bytes": 98473447,
+      "sha256": "7099630dc94094a7d4f50da3a14f406423768506cd21a361087c2f0e62b599ce"
+    },
+    {
+      "arquivo": "brutos/proposicoes-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/proposicoes/csv/proposicoes-2025.csv",
+      "bytes": 90227777,
+      "sha256": "d54598111bba23aa867795cdef9398b3b8db0e4a82e11911b81bb78116500d4b"
+    },
+    {
+      "arquivo": "brutos/proposicoesAutores-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/proposicoesAutores/csv/proposicoesAutores-2025.csv",
+      "bytes": 38939708,
+      "sha256": "f67172a453772a49861792e4c26d8c3809b3dbf60affab62c3ca83d3cc26a7b6"
+    },
+    {
+      "arquivo": "brutos/proposicoesTemas-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/proposicoesTemas/csv/proposicoesTemas-2025.csv",
+      "bytes": 4977832,
+      "sha256": "681843c1a70a088693828b977fa384fc24cab292865d2948f8033a147b43c6f5"
+    },
+    {
+      "arquivo": "brutos/votacoes-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/votacoes/csv/votacoes-2025.csv",
+      "bytes": 8764929,
+      "sha256": "a01e42e46c231dcb56fe149665ac923c45c1be9117e0fca46ac57c228ade09dd"
+    },
+    {
+      "arquivo": "brutos/votacoesProposicoes-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/votacoesProposicoes/csv/votacoesProposicoes-2025.csv",
+      "bytes": 5001145,
+      "sha256": "0c7a09dcd848ba8bff4631054019bd2e2a70a8cdb4ab77f022664beea38ef9d6"
+    },
+    {
+      "arquivo": "brutos/votacoesVotos-2025.csv",
+      "url": "https://dadosabertos.camara.leg.br/arquivos/votacoesVotos/csv/votacoesVotos-2025.csv",
+      "bytes": 58233239,
+      "sha256": "3947bbacff2efc91f0d11b0796a6c6b61cca0783bb7688401c97aaec888789cb"
+    }
+  ]
+}

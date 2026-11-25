@@ -1,0 +1,29 @@
+{
+  "nos": {
+    "Deputado": 648,
+    "Frente": 320,
+    "Proposicao": 8248,
+    "Votacao": 549,
+    "Tema": 32,
+    "Partido": 22,
+    "Estado": 27
+  },
+  "relacionamentos": {
+    "FILIADO_A": 648,
+    "REPRESENTA": 648,
+    "MEMBRO_DE": 65313,
+    "AUTOR_DE": 13123,
+    "TRATA_DE": 19379,
+    "SOBRE": 568,
+    "VOTOU": 174646
+  },
+  "totalNos": 9846,
+  "totalRelacionamentos": 274325,
+  "votos": {
+    "Sim": 101406,
+    "Artigo 17": 420,
+    "Não": 72098,
+    "Abstenção": 347,
+    "Obstrução": 375
+  }
+}

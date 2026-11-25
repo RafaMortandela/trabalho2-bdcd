@@ -1,0 +1,29 @@
+name: Validar dados e consultas
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  neo4j:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Validar CSVs
+        run: python3 scripts/06_validar.py
+      - name: Iniciar Neo4j
+        run: docker compose up -d --wait
+      - name: Importar e verificar
+        run: |
+          docker compose exec -T neo4j cypher-shell < scripts/03_importacao.cypher
+          python3 scripts/06_validar.py --neo4j
+      - name: Conferir idempotência
+        run: |
+          docker compose exec -T neo4j cypher-shell < scripts/03_importacao.cypher
+          python3 scripts/06_validar.py --neo4j
+      - name: Executar análises e conferir métricas
+        run: |
+          python3 scripts/05_executar_consultas.py
+          python3 scripts/07_conferir_resultados.py
+      - name: Encerrar
+        if: always()
+        run: docker compose down

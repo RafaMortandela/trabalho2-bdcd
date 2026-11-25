@@ -1,0 +1,126 @@
+{
+  "consulta": "consultas/05_coautoria_e_divergencia.cypher",
+  "colunas": [
+    "deputadoA",
+    "partidoA",
+    "deputadoB",
+    "partidoB",
+    "coautorias",
+    "frentesComuns",
+    "votosComuns",
+    "votosIguais",
+    "afinidadePercentual"
+  ],
+  "linhas": [
+    [
+      "Bacelar",
+      "PV",
+      "Dr. Fernando Máximo",
+      "PL",
+      10,
+      134,
+      289,
+      82,
+      28.37
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Luiz Lima",
+      "NOVO",
+      11,
+      87,
+      336,
+      97,
+      28.87
+    ],
+    [
+      "Bacelar",
+      "PV",
+      "Alberto Fraga",
+      "PL",
+      11,
+      145,
+      381,
+      117,
+      30.71
+    ],
+    [
+      "Luiz Lima",
+      "NOVO",
+      "Lula da Fonte",
+      "PP",
+      12,
+      45,
+      298,
+      92,
+      30.87
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Pezenti",
+      "MDB",
+      10,
+      154,
+      346,
+      108,
+      31.21
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Mauricio Marcon",
+      "PL",
+      10,
+      70,
+      336,
+      106,
+      31.55
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Coronel Assis",
+      "PL",
+      10,
+      62,
+      312,
+      99,
+      31.73
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Sanderson",
+      "PL",
+      12,
+      76,
+      335,
+      111,
+      33.13
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Zé Trovão",
+      "PL",
+      10,
+      132,
+      304,
+      101,
+      33.22
+    ],
+    [
+      "Laura Carneiro",
+      "PSD",
+      "Cabo Gilberto Silva",
+      "PL",
+      11,
+      128,
+      335,
+      112,
+      33.43
+    ]
+  ]
+}
