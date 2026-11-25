@@ -7,7 +7,6 @@ O projeto relaciona deputados, partidos, UFs, frentes parlamentares, proposiçõ
 ## Entrega
 
 - [Relatório em PDF](relatorio/trabalho2-bdcd.pdf)
-- [Documento editável](https://docs.google.com/document/d/1gNX6lhqlh2a_TgI_8VW3Jblj1mTqLBGRitfxl69tdY4/edit)
 - [Dataset original compactado](https://github.com/RafaMortandela/trabalho2-bdcd/releases/download/v1.0-entrega/dataset-original-2026-11-25.zip), com os nove arquivos coletados e o manifesto de fontes
 - [Fontes e hashes SHA-256](dados/fontes.json)
 - [Relatório de uso de IA](relatorio/uso-de-ia.md)
